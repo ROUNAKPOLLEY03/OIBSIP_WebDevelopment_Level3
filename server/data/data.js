@@ -1,0 +1,42 @@
+export const PIZZA_DATA = {
+  bases: [
+    { id: "thin", name: "Thin Crust", price: 199 },
+    { id: "thick", name: "Thick Crust", price: 249 },
+    { id: "stuffed", name: "Stuffed Crust", price: 299 },
+    { id: "gluten-free", name: "Gluten-Free", price: 279 },
+    { id: "whole-wheat", name: "Whole Wheat", price: 229 },
+  ],
+  sauces: [
+    { id: "marinara", name: "Marinara", price: 0 },
+    { id: "bbq", name: "BBQ Sauce", price: 30 },
+    { id: "pesto", name: "Pesto", price: 40 },
+    { id: "white", name: "White Sauce", price: 35 },
+    { id: "buffalo", name: "Buffalo", price: 45 },
+    { id: "alfredo", name: "Alfredo", price: 50 },
+  ],
+  cheeses: [
+    { id: "mozzarella", name: "Mozzarella", price: 40 },
+    { id: "cheddar", name: "Cheddar", price: 50 },
+    { id: "parmesan", name: "Parmesan", price: 60 },
+    { id: "feta", name: "Feta", price: 70 },
+  ],
+  toppings: [
+    { id: "mushrooms", name: "Mushrooms", price: 25 },
+    { id: "bell-peppers", name: "Bell Peppers", price: 20 },
+    { id: "onions", name: "Red Onions", price: 15 },
+    { id: "tomatoes", name: "Cherry Tomatoes", price: 20 },
+    { id: "olives", name: "Black Olives", price: 30 },
+    { id: "spinach", name: "Fresh Spinach", price: 25 },
+    { id: "corn", name: "Sweet Corn", price: 20 },
+    { id: "jalapenos", name: "Jalapeños", price: 25 },
+    { id: "broccoli", name: "Broccoli", price: 30 },
+    { id: "zucchini", name: "Zucchini", price: 35 },
+    { id: "eggplant", name: "Eggplant", price: 40 },
+    { id: "artichokes", name: "Artichokes", price: 45 },
+  ],
+  sizes: [
+    { id: "small", name: 'Small (8")', multiplier: 1 },
+    { id: "medium", name: 'Medium (12")', multiplier: 1.3 },
+    { id: "large", name: 'Large (16")', multiplier: 1.6 },
+  ],
+};
