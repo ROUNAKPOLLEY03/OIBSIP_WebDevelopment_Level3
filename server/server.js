@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 
 import { router as authRouter } from "./routes/auth.route.js";
 import { router as pizzaRouter } from "./routes/pizza.route.js";
+import { router as cartRouter } from "./routes/cart.route.js";
 
 const app = express();
 dotenv.config();
@@ -46,6 +47,7 @@ app.get("/api/test", (req, res) => {
 
 //Backend
 app.use("/api/auth", authRouter);
+app.use("/api/cart", cartRouter);
 app.use("/api/pizza", pizzaRouter);
 
 const PORT = process.env.PORT;
