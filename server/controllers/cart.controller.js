@@ -12,12 +12,12 @@ export const addToCart = async (req, res) => {
     }
 
     const cartItem = new Cart({
-      userId: req.user._id, // assuming auth middleware sets req.user
-      crust,
-      sauce,
-      cheeses,
-      toppings,
-      size,
+      userId: req.user._id,
+      crust: crust.name || crust, // ✅ take only name
+      sauce: sauce.name || sauce, // ✅ take only name
+      cheeses: cheeses.map((c) => c.name || c), // ✅ extract names
+      toppings: toppings.map((t) => t.name || t),
+      size: size.name || size, // ✅ take only name
     });
 
     await cartItem.save();

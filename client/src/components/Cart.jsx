@@ -1,37 +1,91 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { cartAPI } from "../utils/api";
 
 const Cart = () => {
-  // Mock cart data - will replace with real data from context/API later
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Custom Veggie Supreme",
-      base: "Thick Crust",
-      sauce: "Marinara",
-      cheeses: ["Mozzarella", "Cheddar"],
-      toppings: ["Mushrooms", "Bell Peppers", "Onions", "Tomatoes"],
-      size: 'Medium (12")',
-      quantity: 2,
-      price: 325,
-      image: "🍕",
-    },
-    {
-      id: 2,
-      name: "Spicy Jalapeño Special",
-      base: "Thin Crust",
-      sauce: "Buffalo",
-      cheeses: ["Mozzarella"],
-      toppings: ["Jalapeños", "Onions", "Corn"],
-      size: 'Large (14")',
-      quantity: 1,
-      price: 285,
-      image: "🌶️",
-    },
-  ]);
-
+  const [cartItems, setCartItems] = useState([]);
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCartLoading, setIsCartLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load cart data on component mount
+  useEffect(() => {
+    loadCartData();
+  }, []);
+
+  const loadCartData = async () => {
+    try {
+      setIsCartLoading(true);
+      setError(null);
+      const response = await cartAPI.getCart();
+      console.log(response)
+
+      // Transform API data to match component structure
+      const transformedItems = response.map((item) => ({
+        id: item._id,
+        name: `Custom ${item.size} Pizza`,
+        base: item.crust,
+        sauce: item.sauce,
+        cheeses: item.cheeses,
+        toppings: item.toppings,
+        size: item.size,
+        price: calculatePizzaPrice(item),
+        quantity: 1, // Assuming each item is quantity 1, adjust if your API stores quantity
+        image: getPizzaEmoji(item.toppings),
+        userId: item.userId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }));
+
+      setCartItems(transformedItems);
+    } catch (error) {
+      console.error("Error loading cart:", error);
+      setError("Failed to load cart items. Please try again.");
+    } finally {
+      setIsCartLoading(false);
+    }
+  };
+
+  // Calculate pizza price based on size and toppings
+  const calculatePizzaPrice = (item) => {
+    let basePrice = 0;
+
+    // Base price by size
+    switch (item.size) {
+      case 'Small (8")':
+        basePrice = 199;
+        break;
+      case 'Medium (12")':
+        basePrice = 299;
+        break;
+      case 'Large (16")':
+        basePrice = 399;
+        break;
+      default:
+        basePrice = 299;
+    }
+
+    // Add topping costs (₹30 per topping)
+    const toppingCost = item.toppings.length * 30;
+
+    // Add cheese cost if premium cheese
+    const cheeseCost =
+      item.cheeses.includes("Cheddar") || item.cheeses.includes("Parmesan")
+        ? 50
+        : 0;
+
+    return basePrice + toppingCost + cheeseCost;
+  };
+
+  // Get appropriate emoji based on toppings
+  const getPizzaEmoji = (toppings) => {
+    if (toppings.includes("Pepperoni")) return "🍕";
+    if (toppings.includes("Mushrooms")) return "🍄";
+    if (toppings.includes("Bell Peppers")) return "🫑";
+    if (toppings.includes("Red Onions")) return "🧅";
+    return "🍕";
+  };
 
   // Calculate totals
   const subtotal = cartItems.reduce(
@@ -42,10 +96,10 @@ const Cart = () => {
   const deliveryFee = subtotal >= 500 ? 0 : 40; // Free delivery above ₹500
   const total = subtotal + tax + deliveryFee - discount;
 
-  // Update quantity
+  // Update quantity (local state only - you might want to add API call)
   const updateQuantity = (id, newQuantity) => {
     if (newQuantity === 0) {
-      setCartItems(cartItems.filter((item) => item.id !== id));
+      removeItem(id);
     } else {
       setCartItems(
         cartItems.map((item) =>
@@ -55,9 +109,33 @@ const Cart = () => {
     }
   };
 
-  // Remove item
-  const removeItem = (id) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
+  // Remove item from cart
+  const removeItem = async (id) => {
+    try {
+      setIsLoading(true);
+      await cartAPI.removeFromCart(id);
+      setCartItems(cartItems.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Error removing item:", error);
+      alert("Failed to remove item. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Clear entire cart
+  const clearCart = async () => {
+    try {
+      setIsLoading(true);
+      await cartAPI.clearCart();
+      setCartItems([]);
+      alert("🗑️ Cart cleared successfully!");
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      alert("Failed to clear cart. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Apply promo code
@@ -76,6 +154,45 @@ const Cart = () => {
       setIsLoading(false);
     }, 1000);
   };
+
+  // Loading state
+  if (isCartLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-16">
+            <div className="animate-spin text-6xl mb-6">🍕</div>
+            <h1 className="text-2xl font-semibold text-gray-700">
+              Loading your delicious cart...
+            </h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-16">
+            <div className="text-6xl mb-6">⚠️</div>
+            <h1 className="text-2xl font-semibold text-red-600 mb-4">
+              Oops! Something went wrong
+            </h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={loadCartData}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+            >
+              🔄 Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Empty cart state
   if (cartItems.length === 0) {
@@ -114,13 +231,24 @@ const Cart = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            🛒 Your Cart ({cartItems.length} items)
-          </h1>
-          <p className="text-gray-600">
-            Review your delicious pizza selections before checkout
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              🛒 Your Cart ({cartItems.length} items)
+            </h1>
+            <p className="text-gray-600">
+              Review your delicious pizza selections before checkout
+            </p>
+          </div>
+          {cartItems.length > 0 && (
+            <button
+              onClick={clearCart}
+              disabled={isLoading}
+              className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+            >
+              🗑️ Clear Cart
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -129,8 +257,14 @@ const Cart = () => {
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow relative"
               >
+                {isLoading && (
+                  <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-xl">
+                    <div className="animate-spin text-2xl">⏳</div>
+                  </div>
+                )}
+
                 <div className="flex items-start gap-4">
                   {/* Pizza Preview */}
                   <div className="flex-shrink-0">
@@ -147,7 +281,8 @@ const Cart = () => {
                       </h3>
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700 font-medium"
+                        disabled={isLoading}
+                        className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
                       >
                         ✕
                       </button>
@@ -161,10 +296,12 @@ const Cart = () => {
                         <strong>Sauce:</strong> {item.sauce}
                       </p>
                       <p>
-                        <strong>Cheese:</strong> {item.cheeses.join(", ")}
+                        <strong>Cheese:</strong>{" "}
+                        {item.cheeses.join(", ") || "None"}
                       </p>
                       <p>
-                        <strong>Toppings:</strong> {item.toppings.join(", ")}
+                        <strong>Toppings:</strong>{" "}
+                        {item.toppings.join(", ") || "None"}
                       </p>
                       <p>
                         <strong>Size:</strong> {item.size}
@@ -182,7 +319,8 @@ const Cart = () => {
                             onClick={() =>
                               updateQuantity(item.id, item.quantity - 1)
                             }
-                            className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center font-bold"
+                            disabled={isLoading}
+                            className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center font-bold disabled:opacity-50"
                           >
                             -
                           </button>
@@ -193,7 +331,8 @@ const Cart = () => {
                             onClick={() =>
                               updateQuantity(item.id, item.quantity + 1)
                             }
-                            className="w-8 h-8 bg-orange-200 hover:bg-orange-300 rounded-full flex items-center justify-center font-bold"
+                            disabled={isLoading}
+                            className="w-8 h-8 bg-orange-200 hover:bg-orange-300 rounded-full flex items-center justify-center font-bold disabled:opacity-50"
                           >
                             +
                           </button>
@@ -318,8 +457,11 @@ const Cart = () => {
               </div>
 
               {/* Checkout Button */}
-              <button className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-xl mb-4">
-                🚀 Proceed to Checkout
+              <button
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl disabled:shadow-md mb-4"
+              >
+                {isLoading ? "Processing..." : "🚀 Proceed to Checkout"}
               </button>
 
               {/* Security Badge */}

@@ -72,4 +72,84 @@ export const authAPI = {
   },
 };
 
+// Pizza API functions
+export const pizzaAPI = {
+  // Get pizza ingredients
+  getIngredients: async () => {
+    const response = await API.get("/pizza/ingredients");
+    return response.data;
+  },
+
+  // Calculate price
+  calculatePrice: async (orderData) => {
+    const response = await API.post("/pizza/calculate-price", orderData);
+    return response.data;
+  },
+
+  // Create order
+  createOrder: async (orderData) => {
+    const response = await API.post("/pizza/order", orderData);
+    return response.data;
+  },
+
+  // Get user orders
+  getUserOrders: async () => {
+    const response = await API.get("/pizza/orders");
+    return response.data;
+  },
+
+  // Get specific order
+  getOrder: async (orderId) => {
+    const response = await API.get(`/pizza/orders/${orderId}`);
+    return response.data;
+  },
+};
+
+// Cart API functions
+export const cartAPI = {
+  // Add item to cart
+  addToCart: async (cartData) => {
+    try {
+      const response = await API.post("/cart", cartData);
+      return response.data;
+    } catch (error) {
+      console.error("Add to Cart API error:", error);
+      throw error;
+    }
+  },
+
+  // Get all cart items for current user
+  getCart: async () => {
+    try {
+      const response = await API.get("/cart");
+      return response.data;
+    } catch (error) {
+      console.error("Get Cart API error:", error);
+      throw error;
+    }
+  },
+
+  // Remove single item
+  removeFromCart: async (id) => {
+    try {
+      const response = await API.delete(`/cart/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Remove from Cart API error:", error);
+      throw error;
+    }
+  },
+
+  // Clear entire cart
+  clearCart: async () => {
+    try {
+      const response = await API.delete("/cart");
+      return response.data;
+    } catch (error) {
+      console.error("Clear Cart API error:", error);
+      throw error;
+    }
+  },
+};
+
 export default API;

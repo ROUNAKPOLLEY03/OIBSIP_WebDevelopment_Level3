@@ -1,20 +1,56 @@
-import React, { useState } from "react";
-import { PIZZA_DATA } from "../data/data";
+import React, { useEffect, useState } from "react";
+import { pizzaAPI } from "../utils/api.js";
+import { cartAPI } from "../utils/api.js";
+import { CartSuccessPopup } from "./Popup.jsx";
+import { useNavigate } from "react-router-dom";
 
 const PizzaBuilder = () => {
   // Mock data - will replace with API later
-  const { pizzaBases, sauces, cheeses, toppings, pizzaSizes } = PIZZA_DATA;
+  const navigate = useNavigate();
+  const [ingredients, setIngredients] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await pizzaAPI.getIngredients();
+        setIngredients(data);
+        setError(null); // clear error if success
+      } catch (err) {
+        console.error("Error fetching ingredients:", err);
+        setError("Failed to load ingredients. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   // State management
-  const [selectedBase, setSelectedBase] = useState(pizzaBases[0]);
-  const [selectedSauce, setSelectedSauce] = useState(sauces[0]);
-  const [selectedCheeses, setSelectedCheeses] = useState([cheeses[0]]);
+  const [selectedBase, setSelectedBase] = useState(null);
+  const [selectedSauce, setSelectedSauce] = useState(null);
+  const [selectedCheeses, setSelectedCheeses] = useState([]);
   const [selectedToppings, setSelectedToppings] = useState([]);
-  const [selectedSize, setSelectedSize] = useState(pizzaSizes[1]); // Default to Medium
+  const [selectedSize, setSelectedSize] = useState(null);
   const [activeTab, setActiveTab] = useState("base");
+  const [showCartPopup, setShowCartPopup] = useState(false);
+
+  useEffect(() => {
+    if (ingredients?.data) {
+      const { bases, sauces, cheeses, sizes } = ingredients.data;
+
+      setSelectedBase(bases[0]);
+      setSelectedSauce(sauces[0]);
+      setSelectedCheeses([cheeses[0]]);
+      setSelectedSize(sizes[1]); // Default to Medium
+    }
+  }, [ingredients]);
 
   // Calculate total price
   const calculateTotalPrice = () => {
+    if (!selectedBase || !selectedSauce || !selectedSize) return "0.00";
+
     let basePrice = selectedBase.price;
     let saucePrice = selectedSauce.price;
     let cheesePrice = selectedCheeses.reduce(
@@ -54,12 +90,65 @@ const PizzaBuilder = () => {
     });
   };
 
+  const handleAddToCart = async () => {
+    try {
+      const selectedItems = {
+        size: selectedSize,
+        crust: selectedBase,
+        sauce: selectedSauce,
+        cheeses: selectedCheeses,
+        toppings: selectedToppings,
+      };
+
+      const response = await cartAPI.addToCart(selectedItems);
+      console.log("Added to cart:", response);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    } finally {
+      setShowCartPopup(true);
+      setSelectedBase(bases[0]);
+      setSelectedSauce(sauces[0]);
+      setSelectedCheeses([cheeses[0]]);
+      setSelectedSize(sizes[1]); // Default to Medium
+      setSelectedToppings([]);
+    }
+  };
+
   const tabs = [
     { id: "base", name: "Base", icon: "🍕" },
     { id: "sauce", name: "Sauce", icon: "🍅" },
     { id: "cheese", name: "Cheese", icon: "🧀" },
     { id: "toppings", name: "Toppings", icon: "🥬" },
   ];
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😞</div>
+          <p className="text-lg text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Destructure ingredients data
+  if (!ingredients?.data) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const { bases, sauces, cheeses, toppings, sizes } = ingredients.data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-8">
@@ -83,12 +172,12 @@ const PizzaBuilder = () => {
                 📏 Choose Size
               </h3>
               <div className="grid grid-cols-3 gap-4">
-                {pizzaSizes.map((size) => (
+                {sizes.map((size) => (
                   <button
                     key={size.id}
                     onClick={() => setSelectedSize(size)}
                     className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedSize.id === size.id
+                      selectedSize?.id === size.id
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
                     }`}
@@ -132,12 +221,12 @@ const PizzaBuilder = () => {
                       Choose Your Pizza Base
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {pizzaBases.map((base) => (
+                      {bases.map((base) => (
                         <button
                           key={base.id}
                           onClick={() => setSelectedBase(base)}
                           className={`p-4 rounded-lg border-2 transition-all ${
-                            selectedBase.id === base.id
+                            selectedBase?.id === base.id
                               ? "border-orange-500 bg-orange-50"
                               : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
                           }`}
@@ -168,8 +257,8 @@ const PizzaBuilder = () => {
                         <button
                           key={sauce.id}
                           onClick={() => setSelectedSauce(sauce)}
-                          className={`p-4 rounded-lg border-2 transition-all ₹{
-                            selectedSauce.id === sauce.id
+                          className={`p-4 rounded-lg border-2 transition-all ${
+                            selectedSauce?.id === sauce.id
                               ? "border-orange-500 bg-orange-50"
                               : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
                           }`}
@@ -313,25 +402,31 @@ const PizzaBuilder = () => {
                 </div>
 
                 {/* Size Indicator */}
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                  {selectedSize.name} ({selectedSize.size})
-                </div>
+                {selectedSize && (
+                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                    {selectedSize.name} ({selectedSize.size})
+                  </div>
+                )}
               </div>
 
               {/* Order Summary */}
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span>Base: {selectedBase.name}</span>
-                  <span>₹{selectedBase.price}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Sauce: {selectedSauce.name}</span>
-                  <span>
-                    {selectedSauce.price === 0
-                      ? "Free"
-                      : `₹${selectedSauce.price}`}
-                  </span>
-                </div>
+                {selectedBase && (
+                  <div className="flex justify-between">
+                    <span>Base: {selectedBase.name}</span>
+                    <span>₹{selectedBase.price}</span>
+                  </div>
+                )}
+                {selectedSauce && (
+                  <div className="flex justify-between">
+                    <span>Sauce: {selectedSauce.name}</span>
+                    <span>
+                      {selectedSauce.price === 0
+                        ? "Free"
+                        : `₹${selectedSauce.price}`}
+                    </span>
+                  </div>
+                )}
 
                 {selectedCheeses.length > 0 && (
                   <div>
@@ -367,12 +462,14 @@ const PizzaBuilder = () => {
                   </div>
                 )}
 
-                <div className="border-t pt-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Size Multiplier ({selectedSize.name})</span>
-                    <span>×{selectedSize.multiplier}</span>
+                {selectedSize && (
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Size Multiplier ({selectedSize.name})</span>
+                      <span>×{selectedSize.multiplier}</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="border-t pt-3 flex justify-between text-lg font-bold text-orange-600">
                   <span>Total:</span>
@@ -381,13 +478,32 @@ const PizzaBuilder = () => {
               </div>
 
               {/* Add to Cart Button */}
-              <button className="w-full mt-6 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-all transform hover:scale-105 shadow-lg">
+              <button
+                onClick={handleAddToCart}
+                className="w-full mt-6 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-all transform hover:scale-105 shadow-lg"
+              >
                 🛒 Add to Cart - ₹{calculateTotalPrice()}
               </button>
             </div>
           </div>
         </div>
       </div>
+      <CartSuccessPopup
+        isOpen={showCartPopup}
+        onClose={() => setShowCartPopup(false)}
+        pizzaDetails={{
+          size: selectedSize,
+          crust: selectedBase,
+          sauce: selectedSauce,
+          cheeses: selectedCheeses,
+          toppings: selectedToppings,
+        }}
+        totalPrice={calculateTotalPrice()}
+        onViewCart={() => {
+          // Navigate to cart page
+          navigate("/cart");
+        }}
+      />
     </div>
   );
 };
