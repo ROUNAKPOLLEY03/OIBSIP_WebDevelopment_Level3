@@ -34,6 +34,12 @@ const Navbar = () => {
                   Build Pizza
                 </Link>
                 <Link
+                  to="/cart"
+                  className="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Go to Cart
+                </Link>
+                <Link
                   to="/dashboard"
                   className="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md text-sm font-medium"
                 >

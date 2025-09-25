@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { cartAPI } from "../utils/api";
+import { paymentAPI } from "../utils/api";
+import { SuccessPopup, ErrorPopup } from "./Popup";
 
 const Cart = () => {
+  const [popup, setPopup] = useState({ type: null, message: "" });
   const [cartItems, setCartItems] = useState([]);
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -19,7 +22,6 @@ const Cart = () => {
       setIsCartLoading(true);
       setError(null);
       const response = await cartAPI.getCart();
-      console.log(response)
 
       // Transform API data to match component structure
       const transformedItems = response.map((item) => ({
@@ -155,6 +157,56 @@ const Cart = () => {
     }, 1000);
   };
 
+  const handlePayment = async () => {
+    try {
+      const order = await paymentAPI.createOrder(total);
+
+      const options = {
+        key: "rzp_test_RDxTmdKhfaf6UV",
+        amount: order.amount,
+        currency: order.currency,
+        name: "Pizza App",
+        description: "Pizza Order",
+        order_id: order.id,
+        handler: async function (response) {
+          const verifyRes = await paymentAPI.verifyPayment({
+            razorpay_payment_id: response.razorpay_payment_id,
+          });
+
+          if (verifyRes.success) {
+            setPopup({
+              type: "success",
+              message: "Payment successful! Your pizzas are on the way 🍕🚀",
+            });
+            setCartItems([]);
+          } else {
+            setPopup({
+              type: "error",
+              message: "Payment verification failed ❌",
+            });
+          }
+        },
+        prefill: {
+          name: "Pizza Lover",
+          email: "customer@example.com",
+          contact: "9999999999",
+        },
+        theme: { color: "#F37254" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", () => {
+        setPopup({
+          type: "error",
+          message: "Payment failed ❌ Please try again.",
+        });
+      });
+      rzp.open();
+    } catch (err) {
+      console.error("Payment Error:", err);
+      setPopup({ type: "error", message: "Could not initiate payment ⚠️" });
+    }
+  };
   // Loading state
   if (isCartLoading) {
     return (
@@ -458,11 +510,32 @@ const Cart = () => {
 
               {/* Checkout Button */}
               <button
+                onClick={handlePayment}
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl disabled:shadow-md mb-4"
               >
                 {isLoading ? "Processing..." : "🚀 Proceed to Checkout"}
               </button>
+
+              <SuccessPopup
+                isOpen={popup.type === "success"}
+                onClose={() => setPopup({ type: null, message: "" })}
+                title="Payment Successful!"
+              >
+                <p className="text-center text-lg text-gray-600">
+                  {popup.message}
+                </p>
+              </SuccessPopup>
+
+              <ErrorPopup
+                isOpen={popup.type === "error"}
+                onClose={() => setPopup({ type: null, message: "" })}
+                title="Oops!"
+              >
+                <p className="text-center text-lg text-gray-600">
+                  {popup.message}
+                </p>
+              </ErrorPopup>
 
               {/* Security Badge */}
               <div className="text-center">
