@@ -40,6 +40,18 @@ const pizzaOrderSchema = new mongoose.Schema(
       enum: ["pending", "preparing", "delivered", "cancelled"],
       default: "pending",
     },
+    payment: {
+      razorpay_order_id: { type: String },
+      razorpay_payment_id: { type: String },
+      razorpay_signature: { type: String },
+      method: { type: String },
+      paid_at: { type: Date },
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["created", "paid", "failed"],
+      default: "created",
+    },
   },
   { timestamps: true }
 );
