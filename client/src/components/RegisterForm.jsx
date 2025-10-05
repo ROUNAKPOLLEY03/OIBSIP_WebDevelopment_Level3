@@ -1,5 +1,4 @@
-// client/src/components/RegisterForm.js
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -80,7 +79,7 @@ const RegisterForm = () => {
 
       // Show success message for 2 seconds, then redirect
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/home");
       }, 2000);
     }
   };
@@ -171,9 +170,7 @@ const RegisterForm = () => {
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
+                ></button>
               </div>
               {formErrors.password && (
                 <p className="mt-1 text-sm text-red-600">

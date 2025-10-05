@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import React, { useState, useEffect } from 'react';
 
 const Toast = ({ message, type = 'success', duration = 3000, onClose }) => {

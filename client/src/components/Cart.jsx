@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { cartAPI } from "../utils/api";
 import { paymentAPI } from "../utils/api";
 import { SuccessPopup, ErrorPopup } from "./Popup";
+import {
+  calculatePizzaPrice,
+} from "../utils/priceCalculator";
 
 const Cart = () => {
   const [popup, setPopup] = useState({ type: null, message: "" });
   const [cartItems, setCartItems] = useState([]);
-  const [promoCode, setPromoCode] = useState("");
-  const [discount, setDiscount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isCartLoading, setIsCartLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +17,8 @@ const Cart = () => {
   useEffect(() => {
     loadCartData();
   }, []);
+
+  console.log(cartItems);
 
   const loadCartData = async () => {
     try {
@@ -26,7 +29,7 @@ const Cart = () => {
       // Transform API data to match component structure
       const transformedItems = response.map((item) => ({
         id: item._id,
-        name: `Custom ${item.size} Pizza`,
+        name: `${item.name ?? `Custom ${item.size} Pizza`}`,
         base: item.crust,
         sauce: item.sauce,
         cheeses: item.cheeses,
@@ -49,36 +52,13 @@ const Cart = () => {
     }
   };
 
-  // Calculate pizza price based on size and toppings
-  const calculatePizzaPrice = (item) => {
-    let basePrice = 0;
-
-    // Base price by size
-    switch (item.size) {
-      case 'Small (8")':
-        basePrice = 199;
-        break;
-      case 'Medium (12")':
-        basePrice = 299;
-        break;
-      case 'Large (16")':
-        basePrice = 399;
-        break;
-      default:
-        basePrice = 299;
-    }
-
-    // Add topping costs (₹30 per topping)
-    const toppingCost = item.toppings.length * 30;
-
-    // Add cheese cost if premium cheese
-    const cheeseCost =
-      item.cheeses.includes("Cheddar") || item.cheeses.includes("Parmesan")
-        ? 50
-        : 0;
-
-    return basePrice + toppingCost + cheeseCost;
+  // Calculate total price of all cart items
+  const calculateTotal = () => {
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
+
+  const total = calculateTotal();
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // Get appropriate emoji based on toppings
   const getPizzaEmoji = (toppings) => {
@@ -88,15 +68,6 @@ const Cart = () => {
     if (toppings.includes("Red Onions")) return "🧅";
     return "🍕";
   };
-
-  // Calculate totals
-  const subtotal = cartItems.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
-  const tax = Math.round(subtotal * 0.05); // 5% tax
-  const deliveryFee = subtotal >= 500 ? 0 : 40; // Free delivery above ₹500
-  const total = subtotal + tax + deliveryFee - discount;
 
   // Update quantity (local state only - you might want to add API call)
   const updateQuantity = (id, newQuantity) => {
@@ -109,6 +80,26 @@ const Cart = () => {
         )
       );
     }
+  };
+
+  // Increase quantity
+  const increaseQuantity = (id) => {
+    setCartItems(
+      cartItems.map((item) =>
+        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+      )
+    );
+  };
+
+  // Decrease quantity
+  const decreaseQuantity = (id) => {
+    setCartItems(
+      cartItems.map((item) =>
+        item.id === id 
+          ? { ...item, quantity: Math.max(1, item.quantity - 1) } 
+          : item
+      )
+    );
   };
 
   // Remove item from cart
@@ -140,30 +131,13 @@ const Cart = () => {
     }
   };
 
-  // Apply promo code
-  const applyPromoCode = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      if (promoCode.toLowerCase() === "welcome10") {
-        setDiscount(Math.round(subtotal * 0.1)); // 10% off
-        alert("🎉 Promo code applied! 10% discount added.");
-      } else if (promoCode.toLowerCase() === "first50") {
-        setDiscount(50);
-        alert("🎉 Promo code applied! ₹50 discount added.");
-      } else {
-        alert("❌ Invalid promo code. Try: WELCOME10 or FIRST50");
-      }
-      setIsLoading(false);
-    }, 1000);
-  };
-
   const handlePayment = async () => {
     try {
       const order = await paymentAPI.createOrder(total);
 
       const options = {
         key: "rzp_test_RDxTmdKhfaf6UV",
-        amount: order.amount,
+        amount: total * 100,
         currency: order.currency,
         name: "Pizza App",
         description: "Pizza Order",
@@ -207,6 +181,7 @@ const Cart = () => {
       setPopup({ type: "error", message: "Could not initiate payment ⚠️" });
     }
   };
+
   // Loading state
   if (isCartLoading) {
     return (
@@ -286,7 +261,7 @@ const Cart = () => {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              🛒 Your Cart ({cartItems.length} items)
+              🛒 Your Cart ({totalItems} items)
             </h1>
             <p className="text-gray-600">
               Review your delicious pizza selections before checkout
@@ -363,28 +338,22 @@ const Cart = () => {
                     {/* Quantity and Price */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-700">
-                          Quantity:
-                        </span>
-                        <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Quantity:</span>
+                        <div className="flex items-center bg-gray-100 rounded-lg">
                           <button
-                            onClick={() =>
-                              updateQuantity(item.id, item.quantity - 1)
-                            }
-                            disabled={isLoading}
-                            className="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center font-bold disabled:opacity-50"
+                            onClick={() => decreaseQuantity(item.id)}
+                            disabled={isLoading || item.quantity <= 1}
+                            className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            -
+                            −
                           </button>
-                          <span className="w-8 text-center font-semibold">
+                          <span className="px-4 py-2 font-semibold text-gray-800 min-w-[3rem] text-center">
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() =>
-                              updateQuantity(item.id, item.quantity + 1)
-                            }
+                            onClick={() => increaseQuantity(item.id)}
                             disabled={isLoading}
-                            className="w-8 h-8 bg-orange-200 hover:bg-orange-300 rounded-full flex items-center justify-center font-bold disabled:opacity-50"
+                            className="px-3 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
                           >
                             +
                           </button>
@@ -423,73 +392,19 @@ const Cart = () => {
                 Order Summary
               </h3>
 
-              {/* Promo Code */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Promo Code
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    placeholder="Enter code"
-                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={applyPromoCode}
-                    disabled={isLoading || !promoCode.trim()}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg transition-colors"
-                  >
-                    {isLoading ? "..." : "Apply"}
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Try: WELCOME10, FIRST50
-                </div>
-              </div>
-
               {/* Price Breakdown */}
-              <div className="space-y-3 text-sm mb-6">
-                <div className="flex justify-between">
-                  <span>
-                    Subtotal (
-                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-                    items)
-                  </span>
-                  <span>₹{subtotal}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>Tax (5%)</span>
-                  <span>₹{tax}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1">
-                    Delivery Fee
-                    {deliveryFee === 0 && (
-                      <span className="text-green-600 text-xs">(Free!)</span>
-                    )}
-                  </span>
-                  <span
-                    className={
-                      deliveryFee === 0 ? "line-through text-gray-400" : ""
-                    }
-                  >
-                    ₹{deliveryFee === 0 ? 40 : deliveryFee}
-                  </span>
-                </div>
-
-                {discount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Discount</span>
-                    <span>-₹{discount}</span>
+              <div className="space-y-4 mb-6">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span className="font-medium">₹{item.price * item.quantity}</span>
                   </div>
-                )}
+                ))}
 
-                <div className="border-t pt-3 flex justify-between text-lg font-bold text-gray-900">
-                  <span>Total</span>
+                <div className="border-t pt-4 flex justify-between text-xl font-bold text-gray-900">
+                  <span>Total ({totalItems} items)</span>
                   <span>₹{total}</span>
                 </div>
               </div>
@@ -503,9 +418,6 @@ const Cart = () => {
                   </span>
                 </div>
                 <div className="text-sm text-blue-700">25-35 minutes</div>
-                <div className="text-xs text-blue-600 mt-1">
-                  Free delivery on orders above ₹500
-                </div>
               </div>
 
               {/* Checkout Button */}

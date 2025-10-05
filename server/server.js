@@ -9,6 +9,8 @@ import { router as authRouter } from "./routes/auth.route.js";
 import { router as pizzaRouter } from "./routes/pizza.route.js";
 import { router as cartRouter } from "./routes/cart.route.js";
 import { router as paymentRouter } from "./routes/payment.route.js";
+import { router as adminRouter } from "./routes/admin.route.js";
+import { router as inventoryRouter } from "./routes/inventory.route.js";
 
 const app = express();
 dotenv.config();
@@ -51,6 +53,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/pizza", pizzaRouter);
 app.use("/api/payment", paymentRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/admin", inventoryRouter);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {

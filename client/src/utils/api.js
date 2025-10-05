@@ -177,4 +177,55 @@ export const paymentAPI = {
   },
 };
 
+// Add these functions to your existing client/src/api/api.js file
+
+// Admin API functions
+export const adminAPI = {
+  // Get all orders (Admin only)
+  getAllOrders: async () => {
+    try {
+      const response = await API.get("/admin/orders");
+      return response.data;
+    } catch (error) {
+      console.error("Get all orders API error:", error);
+      throw error;
+    }
+  },
+
+  // Update order status (Admin only)
+  updateOrderStatus: async (orderId, status) => {
+    try {
+      const response = await API.patch(`/admin/orders/${orderId}/status`, {
+        status,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update order status API error:", error);
+      throw error;
+    }
+  },
+
+  // Get admin statistics (Admin only)
+  getAdminStats: async () => {
+    try {
+      const response = await API.get("/admin/stats");
+      return response.data;
+    } catch (error) {
+      console.error("Get admin stats API error:", error);
+      throw error;
+    }
+  },
+
+  // Get single order details (Admin only)
+  getOrderById: async (orderId) => {
+    try {
+      const response = await API.get(`/admin/orders/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get order by ID API error:", error);
+      throw error;
+    }
+  },
+};
+
 export default API;

@@ -106,3 +106,45 @@ export const sendVerificationEmail = async (email, verificationToken) => {
     return false;
   }
 };
+
+//low stock alert to admin
+export const sendSimpleLowStockAlert = async (email, itemList) => {
+  try {
+    const transporter = createTransporter();
+
+    // Create simple text list
+    const itemsText = itemList
+      .map(
+        (item) =>
+          `• ${item.name} (${item.category}): ${item.currentStock}/${item.threshold} ${item.unit}`
+      )
+      .join("\n");
+
+    const mailOptions = {
+      from: `Pizza App <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "🚨 Low Stock Alert - Pizza Inventory",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #e53e3e;">🚨 Low Stock Alert!</h2>
+          <p>Hi Admin,</p>
+          <p>The following items are running low:</p>
+          <div style="background-color: #f7fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <pre style="font-family: inherit; margin: 0; white-space: pre-wrap;">${itemsText}</pre>
+          </div>
+          <p style="color: #e53e3e;"><strong>Please restock immediately!</strong></p>
+          <p style="color: #666; font-size: 12px;">
+            Pizza App System - ${new Date().toLocaleString()}
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Simple low stock alert sent successfully");
+    return true;
+  } catch (error) {
+    console.error("Error sending simple low stock alert:", error);
+    return false;
+  }
+};

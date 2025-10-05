@@ -4,8 +4,39 @@ import { cartAPI } from "../utils/api.js";
 import { CartSuccessPopup } from "./Popup.jsx";
 import { useNavigate } from "react-router-dom";
 
+// Centralized price calculation - same logic as backend and cart
+const calculatePizzaPrice = (pizzaItem) => {
+  let basePrice = 0;
+
+  // Base price by size (ignore ingredient prices, use fixed pricing)
+  switch (pizzaItem.size) {
+    case 'Small (8")':
+      basePrice = 199;
+      break;
+    case 'Medium (12")':
+      basePrice = 299;
+      break;
+    case 'Large (16")':
+      basePrice = 399;
+      break;
+    default:
+      basePrice = 299;
+  }
+
+  // Add topping costs (₹30 per topping)
+  const toppingCost = (pizzaItem.toppings?.length || 0) * 30;
+
+  // Add premium cheese cost (₹50 for Cheddar or Parmesan)
+  const premiumCheeses = ["Cheddar", "Parmesan"];
+  const hasPremiumCheese = pizzaItem.cheeses?.some((cheese) =>
+    premiumCheeses.includes(cheese.name || cheese)
+  );
+  const cheeseCost = hasPremiumCheese ? 50 : 0;
+
+  return basePrice + toppingCost + cheeseCost;
+};
+
 const PizzaBuilder = () => {
-  // Mock data - will replace with API later
   const navigate = useNavigate();
   const [ingredients, setIngredients] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +47,7 @@ const PizzaBuilder = () => {
       try {
         const data = await pizzaAPI.getIngredients();
         setIngredients(data);
-        setError(null); // clear error if success
+        setError(null);
       } catch (err) {
         console.error("Error fetching ingredients:", err);
         setError("Failed to load ingredients. Please try again.");
@@ -32,7 +63,7 @@ const PizzaBuilder = () => {
   const [selectedSauce, setSelectedSauce] = useState(null);
   const [selectedCheeses, setSelectedCheeses] = useState([]);
   const [selectedToppings, setSelectedToppings] = useState([]);
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedSize, setSelectedSize] = useState('Medium (12")'); // Default to Medium string
   const [activeTab, setActiveTab] = useState("base");
   const [showCartPopup, setShowCartPopup] = useState(false);
 
@@ -43,27 +74,54 @@ const PizzaBuilder = () => {
       setSelectedBase(bases[0]);
       setSelectedSauce(sauces[0]);
       setSelectedCheeses([cheeses[0]]);
-      setSelectedSize(sizes[1]); // Default to Medium
+      // Keep selectedSize as string for consistency with pricing logic
     }
   }, [ingredients]);
 
-  // Calculate total price
+  // Get current pizza configuration for price calculation
+  const getCurrentPizzaConfig = () => ({
+    size: selectedSize,
+    toppings: selectedToppings,
+    cheeses: selectedCheeses,
+  });
+
+  // Calculate total price using centralized logic
   const calculateTotalPrice = () => {
-    if (!selectedBase || !selectedSauce || !selectedSize) return "0.00";
+    return calculatePizzaPrice(getCurrentPizzaConfig());
+  };
 
-    let basePrice = selectedBase.price;
-    let saucePrice = selectedSauce.price;
-    let cheesePrice = selectedCheeses.reduce(
-      (total, cheese) => total + cheese.price,
-      0
-    );
-    let toppingsPrice = selectedToppings.reduce(
-      (total, topping) => total + topping.price,
-      0
-    );
+  // Get price breakdown for display
+  const getPriceBreakdown = () => {
+    const config = getCurrentPizzaConfig();
 
-    let subtotal = basePrice + saucePrice + cheesePrice + toppingsPrice;
-    return (subtotal * selectedSize.multiplier).toFixed(2);
+    let basePrice = 0;
+    switch (config.size) {
+      case 'Small (8")':
+        basePrice = 199;
+        break;
+      case 'Medium (12")':
+        basePrice = 299;
+        break;
+      case 'Large (16")':
+        basePrice = 399;
+        break;
+      default:
+        basePrice = 299;
+    }
+
+    const toppingCost = (config.toppings?.length || 0) * 30;
+    const premiumCheeses = ["Cheddar", "Parmesan"];
+    const hasPremiumCheese = config.cheeses?.some((cheese) =>
+      premiumCheeses.includes(cheese.name || cheese)
+    );
+    const cheeseCost = hasPremiumCheese ? 50 : 0;
+
+    return {
+      basePrice,
+      toppingCost,
+      cheeseCost,
+      total: basePrice + toppingCost + cheeseCost,
+    };
   };
 
   // Handle topping selection
@@ -94,23 +152,28 @@ const PizzaBuilder = () => {
     try {
       const selectedItems = {
         size: selectedSize,
-        crust: selectedBase,
-        sauce: selectedSauce,
-        cheeses: selectedCheeses,
-        toppings: selectedToppings,
+        crust: selectedBase.name, // Send name instead of object
+        sauce: selectedSauce.name, // Send name instead of object
+        cheeses: selectedCheeses.map((c) => c.name), // Send names array
+        toppings: selectedToppings.map((t) => t.name), // Send names array
       };
 
       const response = await cartAPI.addToCart(selectedItems);
-      console.log("Added to cart:", response);
+
+      setShowCartPopup(true);
+
+      // Reset to defaults
+      if (ingredients?.data) {
+        const { bases, sauces, cheeses } = ingredients.data;
+        setSelectedBase(bases[0]);
+        setSelectedSauce(sauces[0]);
+        setSelectedCheeses([cheeses[0]]);
+        setSelectedSize('Medium (12")');
+        setSelectedToppings([]);
+      }
     } catch (error) {
       console.error("Error adding to cart:", error);
-    } finally {
-      setShowCartPopup(true);
-      setSelectedBase(bases[0]);
-      setSelectedSauce(sauces[0]);
-      setSelectedCheeses([cheeses[0]]);
-      setSelectedSize(sizes[1]); // Default to Medium
-      setSelectedToppings([]);
+      alert("Failed to add to cart. Please try again.");
     }
   };
 
@@ -139,16 +202,17 @@ const PizzaBuilder = () => {
     );
   }
 
-  // Destructure ingredients data
+  // Loading state
   if (!ingredients?.data) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-600"></div>
       </div>
     );
   }
 
   const { bases, sauces, cheeses, toppings, sizes } = ingredients.data;
+  const priceBreakdown = getPriceBreakdown();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-8">
@@ -172,20 +236,30 @@ const PizzaBuilder = () => {
                 📏 Choose Size
               </h3>
               <div className="grid grid-cols-3 gap-4">
-                {sizes.map((size) => (
+                {['Small (8")', 'Medium (12")', 'Large (16")'].map((size) => (
                   <button
-                    key={size.id}
+                    key={size}
                     onClick={() => setSelectedSize(size)}
                     className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedSize?.id === size.id
+                      selectedSize === size
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
                     }`}
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">🍕</div>
-                      <div className="font-semibold">{size.name}</div>
-                      <div className="text-sm text-gray-600">{size.size}</div>
+                      <div className="font-semibold">{size.split(" ")[0]}</div>
+                      <div className="text-sm text-gray-600">
+                        {size.split(" ")[1]}
+                      </div>
+                      <div className="text-orange-600 font-medium mt-1">
+                        ₹
+                        {size === 'Small (8")'
+                          ? 199
+                          : size === 'Medium (12")'
+                          ? 299
+                          : 399}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -236,8 +310,8 @@ const PizzaBuilder = () => {
                             <div className="font-semibold text-gray-900">
                               {base.name}
                             </div>
-                            <div className="text-orange-600 font-medium">
-                              ₹{base.price}
+                            <div className="text-sm text-gray-500 mt-1">
+                              Included in base price
                             </div>
                           </div>
                         </button>
@@ -268,8 +342,8 @@ const PizzaBuilder = () => {
                             <div className="font-semibold text-gray-900">
                               {sauce.name}
                             </div>
-                            <div className="text-orange-600 font-medium">
-                              {sauce.price === 0 ? "Free" : `+₹${sauce.price}`}
+                            <div className="text-sm text-gray-500 mt-1">
+                              Included in base price
                             </div>
                           </div>
                         </button>
@@ -285,36 +359,43 @@ const PizzaBuilder = () => {
                       Choose Your Cheese (Multiple selection allowed)
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                      {cheeses.map((cheese) => (
-                        <button
-                          key={cheese.id}
-                          onClick={() => toggleCheese(cheese)}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            selectedCheeses.find((c) => c.id === cheese.id)
-                              ? "border-orange-500 bg-orange-50"
-                              : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
-                          }`}
-                        >
-                          <div className="text-center">
-                            <div className="text-3xl mb-2">{cheese.image}</div>
-                            <div className="font-semibold text-gray-900">
-                              {cheese.name}
-                            </div>
-                            <div className="text-orange-600 font-medium">
-                              +₹{cheese.price}
-                            </div>
-                            {selectedCheeses.find(
-                              (c) => c.id === cheese.id
-                            ) && (
-                              <div className="mt-1">
-                                <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-                                  ✓ Selected
-                                </span>
+                      {cheeses.map((cheese) => {
+                        const isPremium = ["Cheddar", "Parmesan"].includes(
+                          cheese.name
+                        );
+                        return (
+                          <button
+                            key={cheese.id}
+                            onClick={() => toggleCheese(cheese)}
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              selectedCheeses.find((c) => c.id === cheese.id)
+                                ? "border-orange-500 bg-orange-50"
+                                : "border-gray-200 hover:border-orange-300 hover:bg-orange-50"
+                            }`}
+                          >
+                            <div className="text-center">
+                              <div className="text-3xl mb-2">
+                                {cheese.image}
                               </div>
-                            )}
-                          </div>
-                        </button>
-                      ))}
+                              <div className="font-semibold text-gray-900">
+                                {cheese.name}
+                              </div>
+                              <div className="text-orange-600 font-medium">
+                                {isPremium ? "+₹50" : "Free"}
+                              </div>
+                              {selectedCheeses.find(
+                                (c) => c.id === cheese.id
+                              ) && (
+                                <div className="mt-1">
+                                  <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                                    ✓ Selected
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -323,7 +404,7 @@ const PizzaBuilder = () => {
                 {activeTab === "toppings" && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Choose Your Toppings (Multiple selection allowed)
+                      Choose Your Toppings (₹30 each)
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {toppings.map((topping) => (
@@ -342,7 +423,7 @@ const PizzaBuilder = () => {
                               {topping.name}
                             </div>
                             <div className="text-orange-600 font-medium">
-                              +₹{topping.price}
+                              +₹30
                             </div>
                             {selectedToppings.find(
                               (t) => t.id === topping.id
@@ -402,72 +483,29 @@ const PizzaBuilder = () => {
                 </div>
 
                 {/* Size Indicator */}
-                {selectedSize && (
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                    {selectedSize.name} ({selectedSize.size})
-                  </div>
-                )}
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                  {selectedSize}
+                </div>
               </div>
 
-              {/* Order Summary */}
+              {/* Order Summary with Real Pricing */}
               <div className="space-y-3 text-sm">
-                {selectedBase && (
-                  <div className="flex justify-between">
-                    <span>Base: {selectedBase.name}</span>
-                    <span>₹{selectedBase.price}</span>
-                  </div>
-                )}
-                {selectedSauce && (
-                  <div className="flex justify-between">
-                    <span>Sauce: {selectedSauce.name}</span>
-                    <span>
-                      {selectedSauce.price === 0
-                        ? "Free"
-                        : `₹${selectedSauce.price}`}
-                    </span>
-                  </div>
-                )}
-
-                {selectedCheeses.length > 0 && (
-                  <div>
-                    <div className="font-medium text-gray-700 mb-1">
-                      Cheese:
-                    </div>
-                    {selectedCheeses.map((cheese) => (
-                      <div
-                        key={cheese.id}
-                        className="flex justify-between ml-2"
-                      >
-                        <span>• {cheese.name}</span>
-                        <span>₹{cheese.price}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span>Base ({selectedSize})</span>
+                  <span>₹{priceBreakdown.basePrice}</span>
+                </div>
 
                 {selectedToppings.length > 0 && (
-                  <div>
-                    <div className="font-medium text-gray-700 mb-1">
-                      Toppings:
-                    </div>
-                    {selectedToppings.map((topping) => (
-                      <div
-                        key={topping.id}
-                        className="flex justify-between ml-2"
-                      >
-                        <span>• {topping.name}</span>
-                        <span>₹{topping.price}</span>
-                      </div>
-                    ))}
+                  <div className="flex justify-between">
+                    <span>Toppings ({selectedToppings.length} × ₹30)</span>
+                    <span>₹{priceBreakdown.toppingCost}</span>
                   </div>
                 )}
 
-                {selectedSize && (
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Size Multiplier ({selectedSize.name})</span>
-                      <span>×{selectedSize.multiplier}</span>
-                    </div>
+                {priceBreakdown.cheeseCost > 0 && (
+                  <div className="flex justify-between">
+                    <span>Premium Cheese</span>
+                    <span>₹{priceBreakdown.cheeseCost}</span>
                   </div>
                 )}
 
@@ -493,14 +531,13 @@ const PizzaBuilder = () => {
         onClose={() => setShowCartPopup(false)}
         pizzaDetails={{
           size: selectedSize,
-          crust: selectedBase,
-          sauce: selectedSauce,
-          cheeses: selectedCheeses,
-          toppings: selectedToppings,
+          crust: selectedBase?.name,
+          sauce: selectedSauce?.name,
+          cheeses: selectedCheeses?.map((c) => c.name),
+          toppings: selectedToppings?.map((t) => t.name),
         }}
         totalPrice={calculateTotalPrice()}
         onViewCart={() => {
-          // Navigate to cart page
           navigate("/cart");
         }}
       />

@@ -266,130 +266,186 @@ const CartSuccessPopup = ({
   isOpen,
   onClose,
   pizzaDetails,
-  totalPrice,
   onViewCart,
   onContinueShopping,
-}) => (
-  <SuccessPopup
-    isOpen={isOpen}
-    onClose={onClose}
-    title="Added to Cart!"
-    size="md"
-  >
-    <div className="space-y-6">
-      {/* Success Message */}
-      <div className="text-center">
-        <p className="text-lg text-gray-600 mb-6">
-          Your delicious pizza is ready to order! 🍕
-        </p>
+}) => {
+  // Centralized price calculation - same logic everywhere
+  const calculatePizzaPrice = (details) => {
+    if (!details) return 0;
 
-        {/* Pizza Visual */}
-        <div className="relative mx-auto mb-6 w-24 h-24">
-          {/* Base */}
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-200 via-yellow-300 to-amber-300 rounded-full shadow-lg border-4 border-yellow-400/50"></div>
+    let basePrice = 0;
 
-          {/* Sauce */}
-          <div className="absolute inset-2 bg-gradient-to-br from-red-400 to-red-500 rounded-full opacity-80"></div>
+    // Base price by size
+    const size = details.size?.name || details.size; // Handle both object and string
+    switch (size) {
+      case 'Small (8")':
+        basePrice = 199;
+        break;
+      case 'Medium (12")':
+        basePrice = 299;
+        break;
+      case 'Large (16")':
+        basePrice = 399;
+        break;
+      default:
+        basePrice = 299;
+    }
 
-          {/* Cheese */}
-          {pizzaDetails?.cheeses?.length > 0 && (
-            <div className="absolute inset-3 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-full opacity-90 border border-yellow-300/30"></div>
-          )}
+    // Add topping costs (₹30 per topping)
+    const toppingCost = (details.toppings?.length || 0) * 30;
 
-          {/* Toppings */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {pizzaDetails?.toppings?.slice(0, 4).map((topping, index) => (
-              <span
-                key={topping.id}
-                className="text-lg absolute animate-pulse"
-                style={{
-                  transform: `rotate(${
-                    index * 90
-                  }deg) translateY(-12px) rotate(-${index * 90}deg)`,
-                  animationDelay: `${index * 0.2}s`,
-                }}
-              >
-                {topping.image}
-              </span>
-            ))}
-          </div>
+    // Add premium cheese cost (₹50 for Cheddar or Parmesan)
+    const premiumCheeses = ["Cheddar", "Parmesan"];
+    const hasPremiumCheese = details.cheeses?.some((cheese) => {
+      const cheeseName = cheese?.name || cheese; // Handle both object and string
+      return premiumCheeses.includes(cheeseName);
+    });
+    const cheeseCost = hasPremiumCheese ? 50 : 0;
 
-          {/* Sparkle Effect */}
-          <div className="absolute -top-2 -right-2 text-yellow-400 animate-spin text-xl">
-            ✨
-          </div>
-        </div>
-      </div>
+    return basePrice + toppingCost + cheeseCost;
+  };
 
-      {/* Pizza Details Card */}
-      <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100/80 shadow-sm">
-        <h4 className="font-bold text-xl text-gray-800 mb-3 text-center">
-          {pizzaDetails?.size?.name} {pizzaDetails?.crust?.name}
-        </h4>
+  const totalPrice = calculatePizzaPrice(pizzaDetails);
 
-        <div className="space-y-2 text-center">
-          <p className="text-gray-600">
-            <span className="font-medium">Sauce:</span>{" "}
-            {pizzaDetails?.sauce?.name}
+  return (
+    <SuccessPopup
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Added to Cart!"
+      size="md"
+    >
+      <div className="space-y-6">
+        {/* Success Message */}
+        <div className="text-center">
+          <p className="text-lg text-gray-600 mb-6">
+            Your delicious pizza is ready to order! 🍕
           </p>
 
-          {pizzaDetails?.cheeses?.length > 0 && (
-            <p className="text-gray-600">
-              <span className="font-medium">Cheese:</span>{" "}
-              {pizzaDetails.cheeses.map((c) => c.name).join(", ")}
-            </p>
-          )}
+          {/* Pizza Visual */}
+          <div className="relative mx-auto mb-6 w-24 h-24">
+            {/* Base */}
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-200 via-yellow-300 to-amber-300 rounded-full shadow-lg border-4 border-yellow-400/50"></div>
 
-          {pizzaDetails?.toppings?.length > 0 && (
-            <p className="text-gray-600">
-              <span className="font-medium">Toppings:</span>{" "}
-              {pizzaDetails.toppings.map((t) => t.name).join(", ")}
-            </p>
-          )}
-        </div>
+            {/* Sauce */}
+            <div className="absolute inset-2 bg-gradient-to-br from-red-400 to-red-500 rounded-full opacity-80"></div>
 
-        {/* Price Highlight */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-medium text-gray-700">Total:</span>
-            <span className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
-              ₹{totalPrice}
-            </span>
+            {/* Cheese */}
+            {pizzaDetails?.cheeses?.length > 0 && (
+              <div className="absolute inset-3 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-full opacity-90 border border-yellow-300/30"></div>
+            )}
+
+            {/* Toppings */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {pizzaDetails?.toppings?.slice(0, 4).map((topping, index) => {
+                // Handle both string and object toppings
+                const toppingName = topping?.name || topping;
+                const toppingEmoji =
+                  topping?.image || getEmojiForTopping(toppingName);
+
+                return (
+                  <span
+                    key={index}
+                    className="text-lg absolute animate-pulse"
+                    style={{
+                      transform: `rotate(${
+                        index * 90
+                      }deg) translateY(-12px) rotate(-${index * 90}deg)`,
+                      animationDelay: `${index * 0.2}s`,
+                    }}
+                  >
+                    {toppingEmoji}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Sparkle Effect */}
+            <div className="absolute -top-2 -right-2 text-yellow-400 animate-spin text-xl">
+              ✨
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3 pt-2">
-        <button
-          onClick={() => {
-            onClose();
-            onContinueShopping?.();
-          }}
-          className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-300 active:scale-95"
-        >
-          <span className="flex items-center justify-center space-x-2">
-            <span>Continue Shopping</span>
-            <span className="text-xl">🛒</span>
-          </span>
-        </button>
+        {/* Pizza Details Card */}
+        <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100/80 shadow-sm">
+          <h4 className="font-bold text-xl text-gray-800 mb-3 text-center">
+            {pizzaDetails?.size?.name || pizzaDetails?.size}{" "}
+            {pizzaDetails?.crust?.name || pizzaDetails?.crust}
+          </h4>
 
-        <button
-          onClick={() => {
-            onClose();
-            onViewCart?.();
-          }}
-          className="w-full border-2 border-orange-300 text-orange-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 hover:border-orange-400 font-semibold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
-        >
-          <span className="flex items-center justify-center space-x-2">
-            <span>View Cart & Checkout</span>
-            <span className="text-xl">→</span>
-          </span>
-        </button>
+          <div className="space-y-2 text-center">
+            <p className="text-gray-600">
+              <span className="font-medium">Sauce:</span>{" "}
+              {pizzaDetails?.sauce?.name || pizzaDetails?.sauce}
+            </p>
+
+            {pizzaDetails?.cheeses?.length > 0 && (
+              <p className="text-gray-600">
+                <span className="font-medium">Cheese:</span>{" "}
+                {pizzaDetails.cheeses.map((c) => c?.name || c).join(", ")}
+              </p>
+            )}
+
+            {pizzaDetails?.toppings?.length > 0 && (
+              <p className="text-gray-600">
+                <span className="font-medium">Toppings:</span>{" "}
+                {pizzaDetails.toppings.map((t) => t?.name || t).join(", ")}
+              </p>
+            )}
+          </div>
+
+          {/* Price Highlight with calculated price */}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3 pt-2">
+          <button
+            onClick={() => {
+              onClose();
+              onContinueShopping?.();
+            }}
+            className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-300 active:scale-95"
+          >
+            <span className="flex items-center justify-center space-x-2">
+              <span>Continue Shopping</span>
+              <span className="text-xl">🛒</span>
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              onClose();
+              onViewCart?.();
+            }}
+            className="w-full border-2 border-orange-300 text-orange-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 hover:border-orange-400 font-semibold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
+          >
+            <span className="flex items-center justify-center space-x-2">
+              <span>View Cart & Checkout</span>
+              <span className="text-xl">→</span>
+            </span>
+          </button>
+        </div>
       </div>
-    </div>
-  </SuccessPopup>
-);
+    </SuccessPopup>
+  );
+};
+
+// Helper function to get emoji for toppings (if needed)
+const getEmojiForTopping = (toppingName) => {
+  const emojiMap = {
+    Pepperoni: "🍕",
+    Mushrooms: "🍄",
+    "Bell Peppers": "🫑",
+    "Red Onions": "🧅",
+    Olives: "🫒",
+    Tomatoes: "🍅",
+    Spinach: "🥬",
+    Chicken: "🍗",
+    Sausage: "🌭",
+  };
+
+  return emojiMap[toppingName] || "🍕";
+};
 
 // Usage Example Component
 const PopupShowcase = () => {

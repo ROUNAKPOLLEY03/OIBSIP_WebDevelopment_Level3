@@ -50,7 +50,7 @@ const pizzaOrderSchema = new mongoose.Schema(
     paymentStatus: {
       type: String,
       enum: ["created", "paid", "failed"],
-      default: "created",
+      default: "paid",
     },
   },
   { timestamps: true }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Lock,
   Eye,
@@ -20,7 +20,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const {token} = useParams();
+  const { token } = useParams();
 
   const resetPassword = async (token, data) => {
     const response = await fetch(

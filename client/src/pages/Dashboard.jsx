@@ -174,11 +174,15 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">
-                  Order History
-                </h3>
-                <p className="text-lg font-semibold text-gray-900">0 Orders</p>
-                <p className="text-sm text-gray-500">No orders yet</p>
+                <p className="text-lg font-semibold text-gray-900">Your Orders</p>
+                <Link
+                  to="/orders"
+                  className="text-sm text-green-600 font-medium"
+                >
+                  Check Your orders! →
+                </Link>
+                
+                <p className="text-sm text-gray-500">Check Your Orders status</p>
               </div>
             </div>
           </div>
@@ -195,7 +199,7 @@ const Dashboard = () => {
                 <h3 className="text-sm font-medium text-gray-500">
                   Reward Points
                 </h3>
-                <p className="text-lg font-semibold text-gray-900">0 Points</p>
+                <p className="text-lg font-semibold text-gray-900">15 Points</p>
                 <p className="text-sm text-gray-500">Start ordering to earn!</p>
               </div>
             </div>

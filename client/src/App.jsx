@@ -17,6 +17,11 @@ import ResetPassword from "./components/resetpassword";
 import EmailVerification from "./components/EmailVerification";
 import PizzaBuilder from "./components/PizzaBuilder";
 import Cart from "./components/Cart";
+import PizzaOrders from "./components/PizzaOrders";
+import AdminOrders from "./components/AdminOrders";
+import AdminDashboard from "./components/AdminDashboard";
+import PizzaDashboard from "./components/PizzaDashboard";
+import AdminInventory from "./components/AdminInventory";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -45,7 +50,7 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  return !isAuthenticated ? children : <Navigate to="/dashboard" />;
+  return !isAuthenticated ? children : <Navigate to="/home" />;
 };
 
 const EmailVerificationRoute = () => {
@@ -123,6 +128,51 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Cart />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <PizzaOrders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/pizzas"
+              element={
+                <ProtectedRoute>
+                  <PizzaDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/orders"
+              element={
+                <ProtectedRoute>
+                  <AdminOrders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/inventory"
+              element={
+                <ProtectedRoute>
+                  <AdminInventory />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

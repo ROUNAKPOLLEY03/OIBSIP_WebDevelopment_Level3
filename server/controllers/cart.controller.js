@@ -3,9 +3,8 @@ import { Cart } from "../models/cart.model.js";
 // Add pizza to cart
 export const addToCart = async (req, res) => {
   try {
-    const { crust, sauce, cheeses, toppings, size } = req.body;
-
-    if (!crust || !sauce || !size) {
+    const { name, crust, sauce, cheeses, toppings, size } = req.body;
+    if (!crust || !sauce) {
       return res
         .status(400)
         .json({ message: "Crust, sauce, and size are required" });
@@ -13,11 +12,12 @@ export const addToCart = async (req, res) => {
 
     const cartItem = new Cart({
       userId: req.user._id,
-      crust: crust.name || crust, // ✅ take only name
-      sauce: sauce.name || sauce, // ✅ take only name
-      cheeses: cheeses.map((c) => c.name || c), // ✅ extract names
+      name: name ? name : "",
+      crust: crust.name || crust,
+      sauce: sauce.name || sauce,
+      cheeses: cheeses.map((c) => c.name || c),
       toppings: toppings.map((t) => t.name || t),
-      size: size.name || size, // ✅ take only name
+      size: size?.name || size,
     });
 
     await cartItem.save();

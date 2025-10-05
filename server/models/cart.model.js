@@ -1,4 +1,3 @@
-// models/PizzaOrder.js
 import mongoose from "mongoose";
 
 const cartSchema = new mongoose.Schema(
@@ -7,6 +6,9 @@ const cartSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    name: {
+      type: String,
     },
     crust: {
       type: String,
@@ -28,7 +30,11 @@ const cartSchema = new mongoose.Schema(
     ],
     size: {
       type: String,
-      required: true,
+      default: "medium",
+    },
+    quantity: {
+      type: Number,
+      default: 1,
     },
   },
   { timestamps: true }
